@@ -1,87 +1,169 @@
-# OmniChat — RC 1.1.0
+# OmniChat（全能聊天）
 
-一个轻量级本地大模型聊天应用，支持任意兼容 Ollama / OpenAI `/v1` 接口的模型服务。**RC 1.1.0** 在 RC 1.0.0 基础上进一步简化设置：**移除 System Prompt 预设，仅保留自定义文本框**。
+> 一个基于 Flask 的轻量级本地大模型聊天应用，支持 OpenAI 兼容接口，一键部署、多模型切换、流式输出。
 
-## 环境要求
+---
 
-- **Python 3.10 或更高版本**
+## ✨ 功能特性
 
-> 低于 3.10 可能缺少某些特性导致运行异常。
-> 下载地址：https://www.python.org/downloads/
+- 🚀 **轻量部署**：纯 Flask 后端 + 原生前端，无重型框架依赖，`pip install` 即可运行
+- 🔌 **OpenAI 兼容**：支持任意 OpenAI API 格式的服务（OpenAI / DeepSeek / 智谱 GLM / 通义千问 等）
+- 💬 **流式输出**：逐字打印回复，体验丝滑
+- 🧠 **多模型切换**：运行时动态选择不同模型，无需重启
+- 📜 **多轮对话**：自动维护上下文历史
+- 🎨 **Markdown 渲染**：代码高亮、表格、公式全支持
+- 💾 **会话持久化**：SQLite 本地存储，刷新不丢记录
+- 📱 **响应式 UI**：PC / 手机 / 平板自适应
 
-## RC 1.1 新变化
+---
 
-| 类别 | 内容 |
-|------|------|
-| 🔧 **移除 System Prompt 预设** | 删除「默认 / 海龟汤 / 翻译 / 代码」四个预设，System Prompt 改为**纯自定义文本框**，配置更直观、无隐藏逻辑 |
-| 🔧 清理前端 | 移除预设下拉框 `<select>`、相关 JS 逻辑（`applyPreset` / `presetText`）及 6 种语言的预设词条 |
+## 🏗️ 架构图
 
-## RC 1.0 新变化
+```
+┌──────────────┐         ┌──────────────┐         ┌──────────────────┐
+│   浏览器 UI   │ ◄─────► │  Flask 后端   │ ◄─────► │  OpenAI 兼容 API  │
+│ (HTML/CSS/JS)│  HTTP  │  (app.py)    │  SDK    │  (任意服务商)      │
+└──────────────┘         └──────┬───────┘         └──────────────────┘
+                               │
+                               ▼
+                        ┌──────────────┐
+                        │   SQLite     │
+                        │  (会话存储)   │
+                        └──────────────┘
+```
 
-| 类别 | 内容 |
-|------|------|
-| 🔧 自动更新跑通 | 检测 → 下载 zip → 解压覆盖 → 提示重启；升级时**保护 `conversations/` `cache/` `static/vendor/`**，用户数据不丢 |
-| 🔧 配置迁移 | `config.json` 带 `schema_version`，旧版（Beta）升级到 RC 自动迁移，**不丢设置** |
-| 🔧 设置页修复 | CSS z-index 层级 + 关闭事件绑定 + safeStorage 异常兜底 |
-| 🔧 版本号 | `VERSION = "RC 1.1.0"`，对齐 RC 阶段规划 |
+---
 
-## 功能
+## 🚀 快速开始
 
-| 功能 | 说明 |
-|------|------|
-| ⚡ 流式输出 (SSE) | 打字机效果，逐字实时显示；自动识别 Ollama `/api/chat` 与 OpenAI `/v1/chat/completions` |
-| 📜 对话历史 | 每次请求带「最近 N 轮」，N 可在模型设置栏配置（默认 10，0=不记忆） |
-| 📝 Markdown 渲染 | 代码块/加粗/列表/链接实时渲染 + 代码高亮（highlight.js）+ XSS 过滤（DOMPurify）；渲染库**首次运行时自动下载到 `static/vendor/`，之后离线永久可用** |
-| ⏹ 停止生成 | 流式时可点「■」中断；发新消息也会自动中断上一条 |
-| 🔄 自动升级 | 启动时检查 GitHub Release，有新版弹窗让用户选「立刻升级 / 暂不 / 永不提示 / 自动升级」 |
+### 环境要求
+- Python 3.8+
+- 一个 OpenAI 兼容的 API Key（或自建网关地址）
 
-## 快速开始
+### 1. 克隆仓库
 
-```powershell
-cd omni-chat
+```bash
+git clone https://github.com/xsj316/OmniChat.git
+cd OmniChat
+```
+
+### 2. 创建虚拟环境
+
+```bash
+# Windows (PowerShell)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. 安装依赖
+
+```bash
 pip install -r requirements.txt
+```
+
+### 4. 配置环境变量
+
+复制配置模板：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`：
+
+```env
+# OpenAI 兼容 API 配置
+OPENAI_API_KEY=sk-your-api-key-here
+OPENAI_BASE_URL=https://api.openai.com/v1
+MODEL_NAME=gpt-4o-mini
+
+# 服务端口（可选，默认 5000）
+PORT=5000
+```
+
+### 5. 启动服务
+
+```bash
 python app.py
 ```
 
-浏览器访问 `http://127.0.0.1:8000`。
+浏览器打开 `http://localhost:5000` 即可使用。
 
-> 首次运行时若 `static/vendor/` 下的 `marked.min.js` / `highlight.min.js` / `purify.min.js` 不存在，会自动联网下载（仅需这一次）；之后断网也能用 Markdown。若要完全离线分发，请保留 `static/vendor/` 目录。
+---
 
-## 配置自动升级
+## ⚙️ 配置详解
 
-打开 `app.py`，确认这两行指向你自己的 GitHub 仓库：
+所有配置通过 `.env` 文件或环境变量设置：
 
-```python
-VERSION = "RC 1.1.0"
-GITHUB_REPO = "xsj316/OmniChat"   # ← 改成你的 owner/repo
+| 变量名 | 说明 | 默认值 |
+|---|---|---|
+| `OPENAI_API_KEY` | API 密钥 | 无（必填） |
+| `OPENAI_BASE_URL` | API 网关地址 | `https://api.openai.com/v1` |
+| `MODEL_NAME` | 默认模型名称 | `gpt-4o-mini` |
+| `PORT` | 服务监听端口 | `5000` |
+
+### 支持的服务商
+
+只要兼容 OpenAI API 格式的服务都可以接入，例如：
+
+| 服务商 | `OPENAI_BASE_URL` | 说明 |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | 官方 |
+| DeepSeek | `https://api.deepseek.com/v1` | 国产，性价比高 |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | 国产 |
+| 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | 阿里云 |
+| 自建网关 | `http://localhost:11434/v1` | 本地自建 OpenAI 兼容层 |
+
+> 💡 只需要把 `OPENAI_BASE_URL` 指向你的服务地址，`MODEL_NAME` 填对应模型名，即可无缝切换。
+
+---
+
+## 📁 项目结构
+
+```
+OmniChat/
+├── app.py              # Flask 主应用入口
+├── config.py           # 配置加载（环境变量）
+├── requirements.txt    # Python 依赖
+├── .env.example        # 配置模板
+├── static/             # 前端静态资源
+│   ├── css/
+│   ├── js/
+│   └── vendor/         # 第三方库（marked.js 等）
+├── templates/          # Jinja2 HTML 模板
+│   └── index.html
+├── models/             # 数据模型 / 数据库操作
+└── README.md
 ```
 
-## RC 阶段规划
+---
 
-| 版本 | 重点 |
-|------|------|
-| RC 1.0 | 核心功能收口：自动更新跑通 + 配置迁移 + 设置页修复 |
-| RC 2.0 | 体验打磨：全局错误兜底 + 加载/空状态 + 打字机光标 |
-| RC 3.0 ~ 6.0 | 工程/分发：首次启动引导 + 关于页 + 卸载清理 + CHANGELOG |
-| RC 6.0 ~ 8.0 | 打包测试 + 分发方案 |
-| RC 8.0+ | 修复所有 bug → 发布正式版 |
+## 📝 使用说明
 
-## 项目结构
+1. **发送消息**：在输入框输入内容，回车或点击发送
+2. **切换模型**：右上角下拉菜单选择不同模型
+3. **新建会话**：点击「+ 新对话」按钮
+4. **历史记录**：左侧栏展示所有历史会话，点击切换
+5. **代码复制**：代码块右上角点击复制按钮
 
-```
-omni-chat/
-├── app.py
-├── templates/index.html
-├── static/
-│   ├── chat.js
-│   ├── style.css
-│   └── vendor/              ← 离线可用（首次自动下载）
-│       ├── marked.min.js
-│       ├── highlight.min.js
-│       ├── highlight.min.css
-│       └── purify.min.js
-├── conversations/            ← 会话存档（升级时保留）
-├── cache/                    ← 升级缓存（升级时保留）
-├── config.json               ← 用户配置（带 schema_version，自动迁移）
-└── requirements.txt
-```
+---
+
+## 🤝 贡献
+
+欢迎 Issue / PR！
+
+1. Fork 本仓库
+2. 创建分支：`git checkout -b feature/xxx`
+3. 提交改动：`git commit -m "feat: xxx"`
+4. 推送分支：`git push origin feature/xxx`
+5. 提交 Pull Request
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE)
