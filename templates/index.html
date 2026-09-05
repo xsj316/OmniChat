@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>OmniChat</title>
+<link rel="stylesheet" href="/static/style.css">
+<!-- Markdown 渲染库：启动时由后端自动下载到 static/vendor/，离线可用 -->
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/highlight.min.js"></script>
+<link rel="stylesheet" href="/static/vendor/highlight.min.css">
+<script src="/static/vendor/purify.min.js"></script>
+</head>
+<body>
+<div class="app">
+<!-- ============================================================ -->
+<!-- 左侧栏 = 模型设置（只放与模型直接相关的配置）                -->
+<!-- ============================================================ -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar__head">
+        <span class="sidebar__title" data-i18n="modelSettings">模型设置</span>
+        <button class="sidebar__collapse" id="sidebarToggle">✕</button>
+    </div>
+
+    <div class="field">
+        <label data-i18n="baseUrl">API Base URL</label>
+        <input type="text" id="baseUrl" data-i18n-placeholder="baseUrlPlaceholder" placeholder="http://127.0.0.1:11434">
+    </div>
+
+    <div class="field">
+        <label data-i18n="apiKey">API Key</label>
+        <input type="password" id="apiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="留空=不需要">
+    </div>
+
+    <div class="field">
+        <label data-i18n="model">模型</label>
+        <div class="model-row">
+            <select id="modelSelect"><option value="">-- <span data-i18n="fetchFirst">先点获取</span> --</option></select>
+            <button class="btn btn--small" id="fetchModels" data-i18n="fetch">获取</button>
+        </div>
+        <input type="text" id="model" data-i18n-placeholder="modelPlaceholder" placeholder="或手动输入模型名">
+    </div>
+
+    <hr>
+
+    <div class="field">
+        <label data-i18n="systemPromptLabel">System Prompt</label>
+        <textarea id="systemPrompt" class="composer__input" style="min-height:90px;margin-top:6px;" data-i18n-placeholder="systemPlaceholder" placeholder="留空=无系统提示词"></textarea>
+    </div>
+
+    <hr>
+
+    <div class="field">
+        <label data-i18n="historyRounds">记忆轮数（最近 N 轮，0=不记忆）</label>
+        <input type="number" id="historyRounds" min="0" max="100" value="10">
+    </div>
+
+    <hr>
+
+    <div class="field field--save">
+        <button class="btn" id="saveBtn" data-i18n="saveConfig">保存配置</button>
+        <span class="status" id="saveStatus"></span>
+    </div>
+</aside>
+
+<!-- ============================================================ -->
+<!-- 主聊天区                                                  -->
+<!-- ============================================================ -->
+<main class="chat">
+    <header class="header">
+        <button class="header__expand" id="menuBtn">☰</button>
+        <div>
+            <h1 class="header__title">OmniChat <span class="header__ver" id="headerVer"></span></h1>
+            <span class="header__model" id="headerModel"></span>
+        </div>
+        <span class="header__status" id="status" data-i18n="ready">就绪</span>
+        <!-- 右上角齿轮：打开设置页面 -->
+        <button class="header__gear" id="gearBtn" title="设置" aria-label="设置">⚙️</button>
+    </header>
+
+    <div class="messages" id="messages" aria-live="polite">
+        <div class="message message--bot"><div class="message__bubble" data-i18n="welcome">你好！填好配置后开始聊天。流式输出、Markdown、对话历史均已就绪。</div></div>
+    </div>
+
+    <form class="composer" id="composer" autocomplete="off">
+        <textarea class="composer__input" id="input" rows="1" data-i18n-placeholder="inputPlaceholder" placeholder="输入消息... Enter 发送"></textarea>
+        <button class="composer__send" id="send" type="submit">➤</button>
+        <button class="composer__stop" id="stop" type="button" hidden>■</button>
+    </form>
+</main>
+</div>
+
+<!-- ============================================================ -->
+<!-- 设置页面（Modal）：语言 + 会话存档/备份 + 检查更新 + 关于   -->
+<!-- 与左侧「模型设置」完全分离                                    -->
+<!-- ============================================================ -->
+<div class="modal modal--settings" id="settingsModal" hidden>
+    <div class="modal__scrim" id="settingsScrim"></div>
+    <div class="modal__box modal__box--settings">
+        <div class="settings__head">
+            <h2 class="settings__title" data-i18n="settings">设置</h2>
+            <button class="settings__close" id="settingsClose" aria-label="关闭">✕</button>
+        </div>
+        <div class="settings__body">
+
+            <!-- 语言 -->
+            <section class="settings__section">
+                <h3 class="settings__h3" data-i18n="language">语言 / Language</h3>
+                <select id="langSelect">
+                    <option value="zh-CN">中文</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                </select>
+            </section>
+
+            <hr>
+
+            <!-- 会话存档 / 备份 -->
+            <section class="settings__section">
+                <h3 class="settings__h3" data-i18n="archive">会话存档</h3>
+                <div class="conv-actions">
+                    <button class="btn btn--small btn--ghost" id="newConvBtn" data-i18n="newConv">＋ 新对话</button>
+                    <button class="btn btn--small btn--ghost" id="saveConvBtn" data-i18n="saveConv">⇩ 保存当前</button>
+                    <button class="btn btn--small btn--ghost" id="exportBtn" data-i18n="export">⇪ 导出备份</button>
+                </div>
+                <div class="conv-list" id="convList"></div>
+            </section>
+
+            <hr>
+
+            <!-- 检查更新 -->
+            <section class="settings__section">
+                <h3 class="settings__h3" data-i18n="checkUpdate">检查更新</h3>
+                <button class="btn btn--small" id="checkUpdateBtn" data-i18n="checkNow">立即检查</button>
+                <span class="status" id="updateCheckStatus"></span>
+            </section>
+
+            <hr>
+
+            <!-- 关于 -->
+            <section class="settings__section">
+                <h3 class="settings__h3" data-i18n="about">关于</h3>
+                <p class="about">
+                    <strong>OmniChat</strong> <span id="aboutVer"></span><br>
+                    <span class="about__sub" data-i18n="aboutDesc">本地大模型聊天客户端，支持流式输出、Markdown 渲染与对话历史。</span>
+                </p>
+            </section>
+
+        </div>
+    </div>
+</div>
+
+<!-- 升级弹窗（保留，供自动升级模块使用） -->
+<div class="modal" id="updateModal" hidden>
+    <div class="modal__box">
+        <h3 data-i18n="updateTitle">发现新版本</h3>
+        <div class="modal__body" id="updateBody"></div>
+        <div class="modal__actions">
+            <button class="btn" id="updateNow" data-i18n="updateNow">立刻升级</button>
+            <button class="btn btn--ghost" id="updateLater" data-i18n="updateLater">暂不升级</button>
+            <button class="btn btn--ghost" id="updateNever" data-i18n="updateNever">以后不再提示</button>
+            <button class="btn btn--ghost" id="updateAuto" data-i18n="updateAuto">自动升级</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/chat.js"></script>
+</body>
+</html>

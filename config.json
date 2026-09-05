@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "base_url": "http://127.0.0.1:11434",
+  "api_key": "",
+  "model": "qwen2.5:7b",
+  "lang": "zh-CN",
+  "history_rounds": 10,
+  "system_prompt": "",
+  "upgrade_policy": "ask",
+  "force_openai": false
+}
